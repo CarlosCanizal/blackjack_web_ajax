@@ -1,0 +1,22 @@
+<h1>Let's play BlackJack <%= @player_label %> <%= @player_name %></h1>
+<h3>Your bet is $<%= @bet %></h3>
+
+<h2> <%= @player_label %> <%=@player_name %> hand </h2>
+<div class='hand'>
+  <p><%=show_cards(@user_hand)%></p>
+  <p>Total : <span class='total'><%=@user_total%></span></p>
+</div>
+
+<h2>Dealer's hand </h2>
+<div class='hand'>
+  <p> <%=show_cards([@dealer_hand[0]])%>, * </p>
+</div>
+
+<div id='action-container' class='clearfix'>
+  <form class='action' method='post' action='/hit'>
+    <input class='btn btn-large btn-info' type='submit' value='Hit' />
+  </form>
+  <form class='action' method='post' action='/stay'>
+    <input class='btn btn-large btn-warning' type='submit' value='Stay' />
+  </form>
+<div>

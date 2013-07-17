@@ -1,0 +1,28 @@
+
+<h2> <%= @player_label %> <%=@player_name %> hand </h2>
+<div class='hand'>
+  <p><%=show_cards(@user_hand)%></p>
+  <p>Total : <span class='total'><%=@user_total%></span></p>
+</div>
+
+<h2>Dealer's hand </h2>
+<div class='hand'>
+  <p> <%=show_cards(@dealer_hand)%></p>
+  <p>Total : <span class='total'><%=@dealer_total%></span></p>
+<div>
+
+<h1 style='text-align:center'> <%=@message%></h1>
+<h2 style='text-align:center'> Now you have $<%=@money%></h2>
+
+<% if @money > 0 %>
+  <div class='align-center'>
+    <a href='/bet' class='btn btn-info btn-large'> Play Again </a>
+    <a href='/take_my_money' class='btn btn-warning btn-large'> Take my money </a>
+  </div>
+<%else %>
+  <div class='align-center'>
+    <h3>You don't have any money please go out the casino</h3>
+    <img class='small-image' alt='go out' src='https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcTqkLFnbQqWNcT18l_A3gCGv6pB8g3beTJku-HGzAqoRryGuvds'/>
+    <a href='/close_game' class='btn btn-danger btn-large'> Go Out </a>
+  </div>
+<%end %>
