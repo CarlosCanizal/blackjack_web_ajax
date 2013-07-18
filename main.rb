@@ -98,8 +98,6 @@ helpers do
 end
 
 before '/game/*' do |route|
-  puts "canizal"
-  puts route
   redirect '/new_player?access=no_access' unless session[:player_name]
   redirect '/game' unless session[:end_game]
 end
