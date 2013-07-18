@@ -3,6 +3,7 @@ require 'sinatra'
 
 set :sessions, true
 
+
 helpers do
 
   def start_game
@@ -96,8 +97,14 @@ helpers do
 
 end
 
-get '/take_my_money' do
-  redirect '/game' unless session[:end_game] == true
+before '/game/*' do |route|
+  puts "canizal"
+  puts route
+  redirect '/new_player?access=no_access' unless session[:player_name]
+  redirect '/game' unless session[:end_game]
+end
+
+get '/game/take_my_money' do
   close_game
   erb :take_my_money
 end
@@ -120,7 +127,7 @@ post '/hit' do
     session[:result] = result[:result]
     session[:money] = result[:money]
     session[:end_game] = true
-    redirect '/results' 
+    redirect '/game/results' 
   end
   redirect '/game'
 end
@@ -130,11 +137,10 @@ post '/stay' do
   result = results(session[:user_hand], session[:dealer_hand], session[:money], session[:bet])
   session[:result] = result[:result]
   session[:money] = result[:money]
-  redirect '/results'
+  redirect '/game/results'
 end
 
-get '/results' do
-  redirect '/game' unless session[:end_game] == true
+get '/game/results' do
   session[:bet] = nil
   @player_name = session[:player_name]
   @player_label = session[:player_label]
@@ -157,8 +163,7 @@ get '/results' do
 end
 
 get '/game' do
-  redirect '/new_player?access=no_access' unless session[:player_name]
-  redirect '/bet' unless session[:bet]
+  redirect '/game/bet' unless session[:bet] 
   @player_name = session[:player_name]
   @player_label = session[:player_label]
   @bet = session[:bet]
@@ -169,14 +174,12 @@ get '/game' do
 end
 
 post '/game' do
-    redirect '/new_player?access=no_access' unless session[:player_name]
-
     @bet = params["bet"].to_i
-    
-    redirect '/bet?bet=invalid' if @bet < 1
-    redirect '/bet?bet=greater' if @bet > session[:money]
-
     session[:bet] = @bet
+    redirect '/game/bet?bet=invalid' if @bet < 1
+    redirect '/game/bet?bet=greater' if @bet > session[:money]
+
+    
     session[:decks] = start_game
     session[:user_hand] = []
     session[:dealer_hand] = []
@@ -196,15 +199,14 @@ post '/game' do
       session[:result] = result[:result]
       session[:money] = result[:money]
       session[:end_game] = true
-      redirect '/results'
+      redirect '/game/results'
     end
     @dealer_hand = session[:dealer_hand]
 
     erb :game
 end
 
-get '/bet' do
-  redirect '/new_player?access=no_access' unless session[:player_name]
+get '/game/bet' do
   redirect '/back_to_game' unless session[:end_game]
   redirect '/close_game' if session[:money] < 1
   @error = "Please type a valid bet numeric greater than 0" if params["bet"] == "invalid"
@@ -217,7 +219,6 @@ end
 
 get '/new_player' do
   redirect '/back_to_game' if session[:player_name]
-
   @error = "Sorry, You have no acccess to the CASINO. Please register!" if params["access"] == "no_access"
   @error = "Please let me know your name" if params["name"] == "empty"
   @error = "Please select a valid label" if params["label"] == "invalid"
@@ -234,7 +235,6 @@ post '/new_player' do
   player_label = params["player_label"]
 
   redirect "/new_player?label=invalid" unless labels.include? player_label
-
   redirect "/new_player?name=empty" if player_name.empty?
   
   session[:player_name] = player_name
@@ -242,5 +242,5 @@ post '/new_player' do
   session[:end_game] = true
 
   session[:money] = 500
-  redirect '/bet'
+  redirect '/game/bet'
 end
