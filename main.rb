@@ -217,6 +217,7 @@ end
 
 get '/new_player' do
   redirect '/back_to_game' if session[:player_name]
+
   @error = "Sorry, You have no acccess to the CASINO. Please register!" if params["access"] == "no_access"
   @error = "Please let me know your name" if params["name"] == "empty"
   @error = "Please select a valid label" if params["label"] == "invalid"
@@ -238,6 +239,7 @@ post '/new_player' do
   
   session[:player_name] = player_name
   session[:player_label] = player_label
+  session[:end_game] = true
 
   session[:money] = 500
   redirect '/bet'
