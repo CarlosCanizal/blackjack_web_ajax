@@ -152,13 +152,13 @@ end
 
 get '/game/results/results' do
   session[:bet] = nil
-
+  puts "results"
   @user_hand = session[:user_hand]
   @user_total = hand_total(session[:user_hand])
 
   @dealer_hand = session[:dealer_hand]
   @dealer_total = hand_total(@dealer_hand)
-
+  
   @message = case session[:result]
     when "lose" then "Sorry #{@player_label} #{@player_name} You Lose #{@bet}"
     when "win" then "Congratulations! #{@player_label} #{@player_name} You Win #{@bet}"
@@ -174,14 +174,17 @@ post '/game/hit_dealer' do
   @dealer_hand = session[:dealer_hand]
   @dealer_total = hand_total(@dealer_hand)
   if @dealer_total >16
+    puts "canizal"
     result =results(session[:user_hand], session[:dealer_hand], session[:money], session[:bet])
     session[:game_step] = nil
     redirect '/game/results/results'
   end
+  session[:game_step] = :dealer_turn
   redirect '/game'
 end
 
 get '/game' do
+  puts session[:game_step]
   redirect '/game/bet' unless session[:bet] 
   @dealer_turn = false
   @player_name = session[:player_name]
@@ -190,9 +193,14 @@ get '/game' do
   @user_hand = session[:user_hand]
   @user_total = hand_total(@user_hand)
   @dealer_hand = session[:dealer_hand]
+  puts session[:game_step]
+  puts "canizal"
   if session[:game_step] == :dealer_turn
+    puts "hola"
     @dealer_turn = true 
-    puts @dealer_total = hand_total(@dealer_hand)
+    @dealer_total = hand_total(@dealer_hand)
+    result =results(session[:user_hand], session[:dealer_hand], session[:money], session[:bet])
+    session[:game_step] = nil
     redirect '/game/results/results' if @dealer_total >16
   end
   erb :game
@@ -201,6 +209,7 @@ end
 post '/game' do
     @bet = params["bet"].to_i
     session[:bet] = @bet
+    redirect '/game' if session[:user_hand]
     redirect '/game/bet?bet=invalid' if @bet < 1
     redirect '/game/bet?bet=greater' if @bet > session[:money]
     session[:game_step] = :playing
@@ -219,7 +228,7 @@ post '/game' do
     @user_total = hand_total(@user_hand)
 
     if @user_total == 21
-      session[:game_step] == :dealer_turn
+      session[:game_step] = :dealer_turn
       redirect '/game'
     end
     @dealer_hand = session[:dealer_hand]

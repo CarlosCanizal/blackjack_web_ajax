@@ -11,8 +11,7 @@
       <div class="navbar-inner">
         <div class='align-right'>
             <% if @player_name %>
-              <%= @player_label %>
-              <%= @player_name %>
+              <span><%= @player_label %> <%= @player_name %></span>
                 <a class='close-game' href='/close_game'>Close Game</a>
             <% end %>
         </div>
