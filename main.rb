@@ -7,19 +7,18 @@ set :sessions, true
 helpers do
 
   def start_game
-    suits = ["\u2660", "\u2665", "\u2666", "\u2663"]
+    suits = ["clubs", "diamonds", "hearts", "spades"]
     values = ["A","2","3","4","5","6","7","8","9","10","Q","K"]
     deck = suits.product(values)
     decks = [deck,deck,deck,deck]
-
   end
 
   def show_cards(hand)
-    cards = []
+    cards = ""
     hand.each do |card|
-      cards << card[0]+card[1]
+      cards += "<img class='card' alt='#{card[0]}_#{card[1]}' src='/images/cards/#{card[0]}_#{card[1]}.jpg' />"
     end
-    cards.join(", ")
+    cards
   end
 
   def close_game
@@ -190,10 +189,9 @@ end
 post '/game' do
     @bet = params["bet"].to_i
     session[:bet] = @bet
-    session[:game_step] = :playing
     redirect '/game/bet?bet=invalid' if @bet < 1
     redirect '/game/bet?bet=greater' if @bet > session[:money]
-
+    session[:game_step] = :playing
     
     session[:decks] = start_game
     session[:user_hand] = []

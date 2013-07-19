@@ -32,6 +32,12 @@ form.action{
   width:300px;
 }
 
+.card{
+  width: 100px;
+  margin-right: 30px;
+  border: solid 2px #999;
+}
+
 body{
   padding-bottom:3em;
 }
