@@ -65,11 +65,6 @@ helpers do
     user_total = hand_total(user_hand)
     dealer_total = hand_total(dealer_hand)
 
-    until dealer_total > 16
-      dealer_hand << hit_card
-      dealer_total = hand_total(dealer_hand)
-    end
-
     if user_total > 21
       result = "lose"
       money -= bet
@@ -92,6 +87,8 @@ helpers do
         end
       end
     end
+    session[:result] = result
+    session[:money] = money
     {result:result, money:money}
   end
 
@@ -138,22 +135,19 @@ post '/game/hit' do
   session[:user_hand] << hit_card
   @user_hand = session[:user_hand]
   @user_total = hand_total(@user_hand)
-  if @user_total >=21
+  if @user_total >21
     result = results(session[:user_hand], session[:dealer_hand], session[:money], session[:bet])
-    session[:result] = result[:result]
-    session[:money] = result[:money]
     session[:game_step] = nil
-    redirect '/game/results/results' 
+    redirect '/game/results/results'
+  elsif @user_total == 21
+    session[:game_step] = :dealer_turn
   end
   redirect '/game'
 end
 
 post '/game/stay' do
-  result = results(session[:user_hand], session[:dealer_hand], session[:money], session[:bet])
-  session[:result] = result[:result]
-  session[:money] = result[:money]
-  session[:game_step] = nil
-  redirect '/game/results/results'
+  session[:game_step] = :dealer_turn
+  redirect '/game'
 end
 
 get '/game/results/results' do
@@ -175,14 +169,32 @@ get '/game/results/results' do
   erb :results
 end
 
+post '/game/hit_dealer' do
+  session[:dealer_hand] << hit_card
+  @dealer_hand = session[:dealer_hand]
+  @dealer_total = hand_total(@dealer_hand)
+  if @dealer_total >16
+    result =results(session[:user_hand], session[:dealer_hand], session[:money], session[:bet])
+    session[:game_step] = nil
+    redirect '/game/results/results'
+  end
+  redirect '/game'
+end
+
 get '/game' do
   redirect '/game/bet' unless session[:bet] 
+  @dealer_turn = false
   @player_name = session[:player_name]
   @player_label = session[:player_label]
   @bet = session[:bet]
   @user_hand = session[:user_hand]
   @user_total = hand_total(@user_hand)
   @dealer_hand = session[:dealer_hand]
+  if session[:game_step] == :dealer_turn
+    @dealer_turn = true 
+    puts @dealer_total = hand_total(@dealer_hand)
+    redirect '/game/results/results' if @dealer_total >16
+  end
   erb :game
 end
 
@@ -207,11 +219,8 @@ post '/game' do
     @user_total = hand_total(@user_hand)
 
     if @user_total == 21
-      result = results(session[:user_hand], session[:dealer_hand], session[:money], session[:bet])
-      session[:result] = result[:result]
-      session[:money] = result[:money]
-      session[:game_step] = nil
-      redirect '/game/results/results'
+      session[:game_step] == :dealer_turn
+      redirect '/game'
     end
     @dealer_hand = session[:dealer_hand]
 

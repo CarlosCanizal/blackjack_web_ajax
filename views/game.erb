@@ -7,16 +7,30 @@
   <p>Total : <span class='total'><%=@user_total%></span></p>
 </div>
 
-<h2>Dealer's hand </h2>
-<div class='hand'>
-  <p> <%=show_cards([@dealer_hand[0]])%> <img alt='hidden' class='card' src='/images/cards/cover.jpg'></p>
-</div>
+<%if @dealer_turn %>
+  <h2>Dealer's hand </h2>
+  <div class='hand'>
+    <p><%=show_cards(@dealer_hand)%></p>
+    <p>Total : <span class='total'><%=@dealer_total%></span></p>
+  </div>
 
-<div id='action-container' class='clearfix'>
-  <form class='action' method='post' action='/game/hit'>
-    <input class='btn btn-large btn-info' type='submit' value='Hit' />
-  </form>
-  <form class='action' method='post' action='/game/stay'>
-    <input class='btn btn-large btn-warning' type='submit' value='Stay' />
-  </form>
-<div>
+  <div id='action-container' class='clearfix'>
+    <form class='action' method='post' action='/game/hit_dealer'>
+      <input class='btn btn-large btn-info' type='submit' value="Next Dealer's card" />
+    </form>
+  </div>
+<%else%>
+  <h2>Dealer's hand </h2>
+  <div class='hand'>
+    <p> <%=show_cards([@dealer_hand[0]])%> <img alt='hidden' class='card' src='/images/cards/cover.jpg'></p>
+  </div>
+
+  <div id='action-container' class='clearfix'>
+    <form class='action' method='post' action='/game/hit'>
+      <input class='btn btn-large btn-info' type='submit' value='Hit' />
+    </form>
+    <form class='action' method='post' action='/game/stay'>
+      <input class='btn btn-large btn-warning' type='submit' value='Stay' />
+    </form>
+  </div>
+<%end%>
