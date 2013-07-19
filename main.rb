@@ -152,7 +152,6 @@ end
 
 get '/game/results/results' do
   session[:bet] = nil
-  puts "results"
   @user_hand = session[:user_hand]
   @user_total = hand_total(session[:user_hand])
 
@@ -166,6 +165,9 @@ get '/game/results/results' do
     when "blackjack" then "#{@player_label} #{@player_name} You Win #{@bet}"
   end
 
+  session[:user_hand] = nil
+  session[:dealer_hand] = nil
+
   erb :results
 end
 
@@ -174,7 +176,6 @@ post '/game/hit_dealer' do
   @dealer_hand = session[:dealer_hand]
   @dealer_total = hand_total(@dealer_hand)
   if @dealer_total >16
-    puts "canizal"
     result =results(session[:user_hand], session[:dealer_hand], session[:money], session[:bet])
     session[:game_step] = nil
     redirect '/game/results/results'
@@ -194,9 +195,7 @@ get '/game' do
   @user_total = hand_total(@user_hand)
   @dealer_hand = session[:dealer_hand]
   puts session[:game_step]
-  puts "canizal"
   if session[:game_step] == :dealer_turn
-    puts "hola"
     @dealer_turn = true 
     @dealer_total = hand_total(@dealer_hand)
     result =results(session[:user_hand], session[:dealer_hand], session[:money], session[:bet])
