@@ -30,7 +30,8 @@ helpers do
     session[:money] = nil
     session[:user_hand] = nil
     session[:dealer_hand] = nil
-    session[:end_game] = true
+    session[:game_step] = nil
+    session[:game_step] = nil
   end
 
   def hit_card
@@ -97,14 +98,26 @@ helpers do
 
 end
 
-before '/game/*' do |route|
-  redirect '/new_player?access=no_access' unless session[:player_name]
-  redirect '/game' unless session[:end_game]
+before '/game/*' do
+  unless session[:player_name]
+    close_game
+    redirect '/new_player?access=no_access'
+  end
+  @player_name = session[:player_name]
+  @player_label = session[:player_label]
+  @money = session[:money]
+
 end
 
-get '/game/take_my_money' do
-  close_game
-  erb :take_my_money
+before '/game/results/*' do
+  redirect '/game' if session[:game_step] == :playing
+  @player_name = session[:player_name]
+  @player_label = session[:player_label]
+  @money = session[:money]
+end
+
+before '/new_player' do
+  redirect '/back_to_game' if session[:game_step]
 end
 
 get '/' do
@@ -116,7 +129,13 @@ get '/close_game' do
   redirect "/"
 end
 
-post '/hit' do
+get '/game/results/take_my_money' do
+  @money = session[:money]
+  close_game
+  erb :take_my_money
+end
+
+post '/game/hit' do
   session[:user_hand] << hit_card
   @user_hand = session[:user_hand]
   @user_total = hand_total(@user_hand)
@@ -124,25 +143,22 @@ post '/hit' do
     result = results(session[:user_hand], session[:dealer_hand], session[:money], session[:bet])
     session[:result] = result[:result]
     session[:money] = result[:money]
-    session[:end_game] = true
-    redirect '/game/results' 
+    session[:game_step] = nil
+    redirect '/game/results/results' 
   end
   redirect '/game'
 end
 
-post '/stay' do
-  session[:end_game] = true
+post '/game/stay' do
   result = results(session[:user_hand], session[:dealer_hand], session[:money], session[:bet])
   session[:result] = result[:result]
   session[:money] = result[:money]
-  redirect '/game/results'
+  session[:game_step] = nil
+  redirect '/game/results/results'
 end
 
-get '/game/results' do
+get '/game/results/results' do
   session[:bet] = nil
-  @player_name = session[:player_name]
-  @player_label = session[:player_label]
-  @money = session[:money]
 
   @user_hand = session[:user_hand]
   @user_total = hand_total(session[:user_hand])
@@ -174,6 +190,7 @@ end
 post '/game' do
     @bet = params["bet"].to_i
     session[:bet] = @bet
+    session[:game_step] = :playing
     redirect '/game/bet?bet=invalid' if @bet < 1
     redirect '/game/bet?bet=greater' if @bet > session[:money]
 
@@ -181,7 +198,6 @@ post '/game' do
     session[:decks] = start_game
     session[:user_hand] = []
     session[:dealer_hand] = []
-    session[:end_game] = false
 
     @player_name = session[:player_name]
     @player_label = session[:player_label]
@@ -196,8 +212,8 @@ post '/game' do
       result = results(session[:user_hand], session[:dealer_hand], session[:money], session[:bet])
       session[:result] = result[:result]
       session[:money] = result[:money]
-      session[:end_game] = true
-      redirect '/game/results'
+      session[:game_step] = nil
+      redirect '/game/results/results'
     end
     @dealer_hand = session[:dealer_hand]
 
@@ -205,13 +221,10 @@ post '/game' do
 end
 
 get '/game/bet' do
-  redirect '/back_to_game' unless session[:end_game]
+  redirect '/game' if session[:game_step] == :playing
   redirect '/close_game' if session[:money] < 1
   @error = "Please type a valid bet numeric greater than 0" if params["bet"] == "invalid"
   @error = "Your bet must be lower or equal than #{session[:money]}" if params["bet"] == "greater"
-  @player_name = session[:player_name]
-  @player_label = session[:player_label]
-  @money = session[:money]
   erb :bet
 end
 
@@ -237,7 +250,7 @@ post '/new_player' do
   
   session[:player_name] = player_name
   session[:player_label] = player_label
-  session[:end_game] = true
+  session[:game_step] = :bet
 
   session[:money] = 500
   redirect '/game/bet'
