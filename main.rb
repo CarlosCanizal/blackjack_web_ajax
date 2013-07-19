@@ -162,7 +162,7 @@ get '/game/results/results' do
     when "lose" then "Sorry #{@player_label} #{@player_name} You Lose #{@bet}"
     when "win" then "Congratulations! #{@player_label} #{@player_name} You Win #{@bet}"
     when "draw" then "This is a Draw"
-    when "blackjack" then "#{@player_label} #{@player_name} You Win #{@bet}"
+    when "blackjack" then "Blackjack! #{@player_label} #{@player_name} You Win #{@bet}"
   end
 
   session[:user_hand] = nil
