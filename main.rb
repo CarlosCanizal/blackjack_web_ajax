@@ -1,8 +1,8 @@
 require 'rubygems'
 require 'sinatra'
+require 'json'
 
 set :sessions, true
-
 
 helpers do
 
@@ -22,14 +22,17 @@ helpers do
   end
 
   def close_game
+    restart_game
     session[:player_name] = nil
     session[:player_label] = nil
+    session[:money] = nil
+  end
+
+  def restart_game
     session[:bet] = nil
     session[:decks] = nil
-    session[:money] = nil
     session[:user_hand] = nil
     session[:dealer_hand] = nil
-    session[:game_step] = nil
     session[:game_step] = nil
   end
 
@@ -60,6 +63,22 @@ helpers do
     hand_total
   end
 
+  def result_message(message, money, bet)
+    buttons = "<a id='play-again' class='btn btn-large btn-info'>Play Again</a>
+               <a id='take-my-money' class='btn btn-large btn-warning'>Take my money</a>"
+
+    if money < 1
+      buttons = "<h3>You don't have any money left, please Go Out!</h3>
+                 <a href='close_game' id='go-out' class='btn btn-large btn-danger'>Go Out</a>"
+    end
+    message = case session[:result]
+      when "lose" then "<h2>Sorry #{@player_label} #{@player_name} You Lose $#{bet}</h2> #{buttons}"
+      when "win" then "<h2>Congratulations! #{@player_label} #{@player_name} You Win $#{bet}</h2>  #{buttons}"
+      when "draw" then "<h2>This is a Draw</h2> #{buttons}"
+      when "blackjack" then "<h2>Blackjack! #{@player_label} #{@player_name} You Win $#{bet}</h2> #{buttons}"
+    end
+  end
+
   def results(user_hand, dealer_hand, money, bet)
 
     user_total = hand_total(user_hand)
@@ -75,7 +94,8 @@ helpers do
       else
         if user_total == 21 && user_hand.length == 2
           result = "blackjack"
-          money += (bet*1.5)
+          bet *= 1.5
+          money += bet
         else
           if user_total > dealer_total || dealer_total > 21
             result = "win"
@@ -87,26 +107,41 @@ helpers do
         end
       end
     end
-    session[:result] = result
-    session[:money] = money
+    puts session[:game_step]
+    unless session[:game_step] == nil
+      session[:game_step] = nil
+      session[:result] = result
+      session[:money] = money
+      session[:bet] = bet
+    end
     {result:result, money:money}
   end
 
 end
 
+before '/game' do
+  redirect '/new_player?access=no_access' unless session[:player_name]
+  @player_name = session[:player_name]
+  @player_label = session[:player_label]
+  @dealer_total = '?'
+  @show_cards = false
+  @results = false
+  @message = nil
+  @money = session[:money]
+end
+
 before '/game/*' do
   unless session[:player_name]
     close_game
-    redirect '/new_player?access=no_access'
+    halt 401, "Not authorized"
   end
   @player_name = session[:player_name]
   @player_label = session[:player_label]
   @money = session[:money]
-
 end
 
 before '/game/results/*' do
-  redirect '/game' if session[:game_step] == :playing
+  halt 401, "Not authorized" if session[:game_step] == :playing
   @player_name = session[:player_name]
   @player_label = session[:player_label]
   @money = session[:money]
@@ -125,122 +160,178 @@ get '/close_game' do
   redirect "/"
 end
 
-get '/game/results/take_my_money' do
+post '/game/results/take_my_money' do
   @money = session[:money]
   close_game
-  erb :take_my_money
+  erb :take_my_money, :layout=>false
 end
 
 post '/game/hit' do
-  session[:user_hand] << hit_card
+  content_type :json
+  @user_card = hit_card
+  session[:user_hand] << @user_card
   @user_hand = session[:user_hand]
   @user_total = hand_total(@user_hand)
+  @dealer_card = nil
+  @dealer_total = nil
+  @message = nil
   if @user_total >21
+    @dealer_hand = session[:dealer_hand]
+    @dealer_total = hand_total(@dealer_hand)
     result = results(session[:user_hand], session[:dealer_hand], session[:money], session[:bet])
-    session[:game_step] = nil
-    redirect '/game/results/results'
+    @dealer_card = show_cards([@dealer_hand[1]])
+    @game_action = 'player_busted'
+    @message = result_message(result[:result],session[:money], session[:bet])
   elsif @user_total == 21
+    @dealer_hand = session[:dealer_hand]
+    @dealer_total = hand_total(@dealer_hand)
     session[:game_step] = :dealer_turn
+    @dealer_card = show_cards([@dealer_hand[1]])
+    @game_action = 'dealer_turn'
+    @message = "<a id='dealer-card' class='btn btn-large btn-info'>See next dealer card?</a>"
+  else
+    @game_action = 'player_turn'
   end
-  redirect '/game'
+  { user_card:show_cards([@user_card]), 
+    user_total:@user_total, 
+    dealer_card:@dealer_card,
+    dealer_total:@dealer_total,
+    game_action:@game_action,
+    message:@message,
+    money:session[:money]
+  }.to_json
 end
 
 post '/game/stay' do
+  content_type :json
   session[:game_step] = :dealer_turn
-  redirect '/game'
-end
-
-get '/game/results/results' do
-  session[:bet] = nil
-  @user_hand = session[:user_hand]
-  @user_total = hand_total(session[:user_hand])
-
   @dealer_hand = session[:dealer_hand]
+  @dealer_card = show_cards([@dealer_hand[1]])
   @dealer_total = hand_total(@dealer_hand)
-  
-  @message = case session[:result]
-    when "lose" then "Sorry #{@player_label} #{@player_name} You Lose #{@bet}"
-    when "win" then "Congratulations! #{@player_label} #{@player_name} You Win #{@bet}"
-    when "draw" then "This is a Draw"
-    when "blackjack" then "Blackjack! #{@player_label} #{@player_name} You Win #{@bet}"
+  @message = "<a id='dealer-card' class='btn btn-large btn-info'>See next dealer card?</a>"
+  @game_action = 'dealer_turn'
+  if @dealer_total > 16
+    result =results(session[:user_hand], session[:dealer_hand], session[:money], session[:bet])
+    @message = result_message(result[:result],session[:money], session[:bet])
+    @game_action = 'results'
   end
 
-  session[:user_hand] = nil
-  session[:dealer_hand] = nil
-
-  erb :results
+  { 
+    game_action:@game_action,
+    dealer_card:@dealer_card,
+    dealer_total:@dealer_total,
+    message: @message,
+    money:session[:money]
+  }.to_json
 end
 
 post '/game/hit_dealer' do
-  session[:dealer_hand] << hit_card
+  content_type :json
+  @dealer_card = hit_card
+  session[:dealer_hand] << @dealer_card
   @dealer_hand = session[:dealer_hand]
   @dealer_total = hand_total(@dealer_hand)
+  @message = nil
+  @game_action = 'dealer_turn'
   if @dealer_total >16
     result =results(session[:user_hand], session[:dealer_hand], session[:money], session[:bet])
-    session[:game_step] = nil
-    redirect '/game/results/results'
+    @message = result_message(result[:result],session[:money], session[:bet])
+    @game_action = 'results'
   end
   session[:game_step] = :dealer_turn
-  redirect '/game'
+  { dealer_card:show_cards([@dealer_card]),
+    dealer_total:@dealer_total,
+    game_action:@game_action,
+    message:@message,
+    money:session[:money]
+  }.to_json
 end
 
 get '/game' do
-  redirect '/game/bet' unless session[:bet] 
-  @dealer_turn = false
-  @player_name = session[:player_name]
-  @player_label = session[:player_label]
-  @bet = session[:bet]
-  @user_hand = session[:user_hand]
-  @user_total = hand_total(@user_hand)
-  @dealer_hand = session[:dealer_hand]
-  if session[:game_step] == :dealer_turn
-    @dealer_turn = true 
-    @dealer_total = hand_total(@dealer_hand)
-    if @dealer_total >16
-      result =results(session[:user_hand], session[:dealer_hand], session[:money], session[:bet])
-      session[:game_step] = nil
-      redirect '/game/results/results' 
-    end
+  if session[:money] < 1
+    close_game
+    redirect '/' 
   end
-  erb :game
+  if session[:bet]
+    @dealer_turn = false
+    @bet = session[:bet]
+    @user_hand = session[:user_hand]
+    @user_total = hand_total(@user_hand)
+    @dealer_hand = session[:dealer_hand]
+    if session[:game_step] == :dealer_turn
+      @dealer_turn = true 
+      @dealer_total = hand_total(@dealer_hand)
+      @show_cards = true
+      if @dealer_total >16
+        @results = true
+        result =results(session[:user_hand], session[:dealer_hand], session[:money], session[:bet])
+        @message = result_message(result[:message], session[:money], session[:bet])
+      end
+    elsif session[:game_step] == nil
+      @dealer_total = hand_total(@dealer_hand)
+      @show_cards = true
+      @results = true
+      result =results(session[:user_hand], session[:dealer_hand], session[:money], session[:bet])
+      @message = result_message(result[:message], session[:money], session[:bet])
+    end
+    erb :game
+  else
+    erb :bet
+  end
 end
 
 post '/game' do
-    @bet = params["bet"].to_i
-    session[:bet] = @bet
-    redirect '/game' if session[:user_hand]
-    redirect '/game/bet?bet=invalid' if @bet < 1
-    redirect '/game/bet?bet=greater' if @bet > session[:money]
-    session[:game_step] = :playing
-    
-    session[:decks] = start_game
-    session[:user_hand] = []
-    session[:dealer_hand] = []
 
-    @player_name = session[:player_name]
-    @player_label = session[:player_label]
-    
-    2.times { session[:user_hand] << hit_card }
-    2.times { session[:dealer_hand] << hit_card }
+    unless session[:player_name]
+      status 401
+    else
+      @bet = params["bet"].to_i
+      session[:bet] = @bet
+      redirect '/game' if session[:user_hand]
+      if @bet < 1 || @bet > session[:money]
 
-    @user_hand = session[:user_hand]
-    @user_total = hand_total(@user_hand)
+        session[:bet] = nil
+        @error = "Please type a valid bet numeric greater than 0" if @bet < 1
+        @error = "Your bet must be lower or equal than #{session[:money]}" if @bet > session[:money]
+        
+        content_type :json
+        body({errors:@error}.to_json)
+        status 400
+      else
+        session[:game_step] = :playing
+        
+        session[:decks] = start_game
+        session[:user_hand] = []
+        session[:dealer_hand] = []
+        
+        2.times { session[:user_hand] << hit_card }
+        2.times { session[:dealer_hand] << hit_card }
 
-    if @user_total == 21
-      session[:game_step] = :dealer_turn
-      redirect '/game'
+        @user_hand = session[:user_hand]
+        @user_total = hand_total(@user_hand)
+
+        if @user_total == 21
+          @show_cards = true
+          @dealer_hand = session[:dealer_hand]
+          @dealer_total = hand_total(@dealer_hand)
+          if @dealer_total > 16
+            @results = true
+            result =results(session[:user_hand], session[:dealer_hand], session[:money], session[:bet])
+            @message = result_message(result[:message], session[:money], session[:bet])
+          end
+        end
+        @dealer_hand = session[:dealer_hand]
+
+        erb :game, :layout=>false
+      end
     end
-    @dealer_hand = session[:dealer_hand]
-
-    erb :game
 end
 
-get '/game/bet' do
-  redirect '/game' if session[:game_step] == :playing
-  redirect '/close_game' if session[:money] < 1
-  @error = "Please type a valid bet numeric greater than 0" if params["bet"] == "invalid"
-  @error = "Your bet must be lower or equal than #{session[:money]}" if params["bet"] == "greater"
-  erb :bet
+post '/game/bet' do
+  halt 401, "Not authorized" if session[:game_step] == :playing
+  halt 401, "Not authorized" if session[:money] < 1
+  restart_game
+  erb :bet, :layout=>false
 end
 
 get '/new_player' do
@@ -266,7 +357,6 @@ post '/new_player' do
   session[:player_name] = player_name
   session[:player_label] = player_label
   session[:game_step] = :bet
-
   session[:money] = 500
-  redirect '/game/bet'
+  redirect '/game'
 end

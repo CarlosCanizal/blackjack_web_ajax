@@ -1,35 +1,49 @@
-<h3>Your bet is $<%= @bet %></h3>
+<div id='casino'>
+  <div id='table'>
+    <div class='opacity-table'></div>
+    <div id='table-content'>
+      <div id='dealer-section' class='table-section'>
+        
+        <h3>Dealer has <span id='dealer-total'><%=@dealer_total%></span></h3>
+        <div id='dealer-cards' class='cards-container'>
+          <% if @show_cards %>
+            <%=show_cards(@dealer_hand)%>
+          <%else%>
+            <%=show_cards([@dealer_hand[0]])%> 
+            <img id='hidden-card' alt='hidden' class='card' src='/images/cards/cover.jpg'>
+          <%end%>
+       </div>
+      </div>
+      <div id='bet-section' class='table-section'>
+        <%if @results%>
+          <%=@message%>
+        <%else%>
+          <img alt='bet' src='/images/blackjack.png' />
 
-<h2> <%= @player_label %> <%=@player_name %> hand </h2>
-<div class='hand'>
-  <p><%=show_cards(@user_hand)%></p>
-  <p>Total : <span class='total'><%=@user_total%></span></p>
+          <h2> Do you want?</h2>
+          <div id='players-actions'>
+              <% if @show_cards %>
+                <a id='dealer-card' class='btn btn-large btn-info'>See next dealer card?</a>
+              <%else%>
+                <a class='btn btn-large btn-info player-action' action='hit' >Hit</a>
+                <a class='btn btn-large btn-warning player-action' action='stay' >Stay</a>
+              <%end%>
+          </div>
+          <div id='player-bet'>
+            <span class='bet-text'>BET</span>
+            <span class='bet-money'>$<%=@bet%></span>
+          </div>
+        <%end%>
+      </div>
+      <div id='player-section' class='table-section'>
+        <div id='player-cards' class='cards-container'>
+          <%=show_cards(@user_hand)%>
+        </div>
+        <h3><%= @player_label %> <%=@player_name %> has 
+            <span id='player-total'><%=@user_total%></span>
+        </h3>
+        <h3> Your money is: <span id='player-money'>$<%=@money%></span></h3>
+      </div>
+    </div>
+  </div>
 </div>
-
-<%if @dealer_turn %>
-  <h2>Dealer's hand </h2>
-  <div class='hand'>
-    <p>Total : <span class='total'><%=@dealer_total%></span></p>
-    <p><%=show_cards(@dealer_hand)%></p>
-  </div>
-
-  <div id='action-container' class='clearfix'>
-    <form class='action' method='post' action='/game/hit_dealer'>
-      <input class='btn btn-large btn-info' type='submit' value="Next Dealer's card" />
-    </form>
-  </div>
-<%else%>
-  <h2>Dealer's hand </h2>
-  <div class='hand'>
-    <p> <%=show_cards([@dealer_hand[0]])%> <img alt='hidden' class='card' src='/images/cards/cover.jpg'></p>
-  </div>
-
-  <div id='action-container' class='clearfix'>
-    <form class='action' method='post' action='/game/hit'>
-      <input class='btn btn-large btn-info' type='submit' value='Hit' />
-    </form>
-    <form class='action' method='post' action='/game/stay'>
-      <input class='btn btn-large btn-warning' type='submit' value='Stay' />
-    </form>
-  </div>
-<%end%>
