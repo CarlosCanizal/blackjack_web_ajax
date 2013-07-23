@@ -285,7 +285,7 @@ post '/game' do
     unless session[:player_name]
       status 401
     else
-      @bet = params["bet"].to_f
+      @bet = params["bet"].to_i
       session[:bet] = @bet
       redirect '/game' if session[:user_hand]
       if @bet < 1 || @bet > session[:money]
